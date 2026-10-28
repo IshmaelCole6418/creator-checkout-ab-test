@@ -1,0 +1,15 @@
+{
+  "name": "creator-checkout-ab-test",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node src/checkout_ab_test.ts",
+    "test": "node --test src/checkout_ab_test.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "zod": "^3.24.0"
+  }
+}
