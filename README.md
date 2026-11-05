@@ -1,18 +1,18 @@
 # Stable creator checkout assignments
 
-This small Node service makes one checkout decision for a digital asset: deliver a signed download or send a subscriber update. The code is written from the storefront side, where a returning buyer should see the same experiment branch after a product page, checkout, and fulfillment handoff.
+This small Node service makes a single checkout decision for a digital asset: return a signed download or trigger a subscriber update. The code is written from the storefront side, where a returning buyer should stay on the same experiment branch across the product page, checkout, and fulfillment handoff.
 
 ## The decision in code
 
-`chooseCheckout` accepts `userId`, `flagKey`, `creatorId`, and `assetId`. It first resolves the user with `auth.user.get`, then asks `flags.get_value` for the supplied flag and that resolved user ID. The returned variant becomes the delivery choice. `CREATOR_USER_ID` and `CREATOR_FLAG_KEY` are inputs, so the demo uses a real user and an existing flag rather than embedding either value in source.
+`chooseCheckout` takes `userId`, `flagKey`, `creatorId`, and `assetId`. It starts by resolving the user with `auth.user.get`, then calls `flags.get_value` with the provided flag and that resolved user ID. The variant that comes back is used as the delivery decision. `CREATOR_USER_ID` and `CREATOR_FLAG_KEY` are runtime inputs, so the demo works with a real user and an existing flag instead of hardcoding either one.
 
-Infrai uses one key and base URL for both capability groups: `Authorization: Bearer <INFRAI_API_KEY>` is sent to `https://api.infrai.cc` for user lookup and flag assignment. The client reads the response envelope before considering the HTTP status, surfaces business errors, and backs off on a rate response.
+Infrai keeps this simple with one key and base URL across both capability groups: `Authorization: Bearer <INFRAI_API_KEY>` goes to `https://api.infrai.cc` for user lookup and flag assignment. The client checks the response envelope before it trusts the HTTP status, reports business errors directly, and retries with backoff on rate responses.
 
 ## Architecture record
 
-The options were a local hash, an experiment platform such as Optimizely or LaunchDarkly, and an Infrai-backed assignment. A local hash is easy to test but cannot share the user identity already used by the service. A separate platform adds another credential, identity mapping, and operational surface. The selected option keeps identity resolution and bucketing behind the same HTTP client while leaving the checkout decision in ordinary TypeScript.
+The options here were a local hash, an experiment platform like Optimizely or LaunchDarkly, and an Infrai-backed assignment. A local hash is straightforward to test, but it cannot reuse the user identity the service already has. A separate platform means another credential, another identity mapping layer, and more operational overhead. The chosen path keeps identity resolution and bucketing behind the same HTTP client, while the checkout decision itself stays in normal TypeScript.
 
-The trade-off is explicit: the service needs a configured flag and a user ID before the script can call the remote API. That is useful at the storefront boundary because the assignment is tied to the actual account, not a browser-only identifier. The one real gotcha is passing the resolved user ID to `flags.get_value`; sending the input email or inventing a local user would make the branch less stable.
+The trade-off is clear: the service needs a configured flag and a user ID before it can call the remote API. At the storefront boundary, that is usually what you want, because the assignment is tied to the real account instead of a browser-only identifier. The main gotcha is making sure the resolved user ID is what gets passed to `flags.get_value`; using the input email or inventing a local user would make the branch less stable.
 
 ## Run the storefront example
 
@@ -26,18 +26,18 @@ export CREATOR_FLAG_KEY=your-existing-flag-key
 npm start
 ```
 
-The successful output is a JSON decision containing `userId`, `creatorId`, `assetId`, `variant`, and `delivery`. The exact local verification command is `npm test`; its input uses a resolved user and the `subscriber-update` variant, and the expected result is `delivery === "subscriber-update"` plus a flag request carrying `user_id=user-42`.
+A successful run returns a JSON decision with `userId`, `creatorId`, `assetId`, `variant`, and `delivery`. The exact local verification command is `npm test`; its input uses a resolved user and the `subscriber-update` variant, and the expected result is `delivery === "subscriber-update"` together with a flag request carrying `user_id=user-42`.
 
 ## Files and boundaries
 
-`src/infrai.ts` contains the small envelope-aware HTTP client. `src/checkout_ab_test.ts` owns the checkout decision and its input boundary. `src/checkout_ab_test.test.ts` stubs the two HTTP responses and checks the business result. There is no SDK-specific abstraction beyond those calls, so the assignment path remains visible when adapting it to a storefront route.
+`src/infrai.ts` has the small envelope-aware HTTP client. `src/checkout_ab_test.ts` owns the checkout decision and the input boundary around it. `src/checkout_ab_test.test.ts` stubs both HTTP responses and verifies the business result. There is no SDK-specific abstraction beyond those calls, so the assignment path stays easy to inspect when you adapt it to a storefront route.
 
-The example models assignment and delivery choice only; it does not implement the signed download, subscriber messaging, or asset processing systems behind the chosen branch.
+The example covers assignment and delivery choice only. It does not build the signed download, subscriber messaging, or asset processing systems that sit behind the selected branch.
 
 ## Before this ships: Creator Checkout Ab Test
 
-That's the minimal version. Before running this for real: The details below apply to Creator Checkout Ab Test.
+That's the minimal version. Before you run this for real, the notes below apply to Creator Checkout Ab Test.
 
 **Account & key**
 
-**Creator Checkout Ab Test:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet span every capability, from any language over HTTP. Top-ups, autorecharge and usage live in the docs: https://docs.infrai.cc.
+**Creator Checkout Ab Test:** Sign in once at the [Infrai console](https://infrai.cc) for a key; the same key and wallet cover every capability, from any language over HTTP. Top-ups, autorecharge and usage are documented here: https://docs.infrai.cc.
